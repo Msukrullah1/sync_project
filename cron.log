@@ -116,3 +116,15 @@ Auto Push Successful ✅
 From github.com:Msukrullah1/sync_project
  * branch            main       -> FETCH_HEAD
 Already up to date.
+[Fri Feb 20 00:50:16 IST 2026] No .sh changes ✔
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[Fri Feb 20 00:51:00 IST 2026] Merge conflict detected ❌
+[Fri Feb 20 00:51:36 IST 2026] Merge conflict detected ❌
+[Fri Feb 20 00:51:56 IST 2026] Merge conflict detected ❌
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[Fri Feb 20 00:52:00 IST 2026] Merge conflict detected ❌
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[Fri Feb 20 00:53:00 IST 2026] Merge conflict detected ❌

@@ -3,9 +3,8 @@
 PROJECT_DIR="$HOME/sync_project"
 LOG_FILE="$PROJECT_DIR/cron.log"
 
-# 🔔 Telegram Config
-BOT_TOKEN="8389555301:AAGZRmlnggV0KmYJmp76T3isoWvHVJfogXE"
-CHAT_ID="6403536553"
+BOT_TOKEN="PASTE_YOUR_REAL_BOT_TOKEN_HERE"
+CHAT_ID="PASTE_YOUR_REAL_CHAT_ID_HERE"
 
 send_notification() {
 curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
@@ -15,20 +14,25 @@ curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
 
 cd "$PROJECT_DIR" || exit 1
 
-# Pull latest changes safely
+# FIRST: add & commit any local changes
+git add . 2>/dev/null
+
+if ! git diff-index --quiet HEAD --; then
+    git commit -m "Pre-sync commit: $(date '+%Y-%m-%d %H:%M:%S')"
+fi
+
+# THEN: pull safely
 git pull origin main --rebase
 
-# Conflict check
 if [ $? -ne 0 ]; then
     echo "[$(date)] Merge conflict detected ❌" >> "$LOG_FILE"
     send_notification "❌ Merge Conflict Detected at $(date)"
     exit 1
 fi
 
-# Track only .sh files
+# NOW: only track .sh files
 git add *.sh 2>/dev/null
 
-# Check for changes
 if ! git diff-index --quiet HEAD --; then
     git commit -m "Smart Sync (.sh only): $(date '+%Y-%m-%d %H:%M:%S')"
     git push origin main
