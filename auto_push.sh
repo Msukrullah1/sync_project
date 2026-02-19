@@ -5,11 +5,11 @@ LOG_FILE="$PROJECT_DIR/cron.log"
 
 cd "$PROJECT_DIR" || exit 1
 
-# Pre-commit any local changes
+# Stage changes
 git add . 2>/dev/null
 git commit -m "Auto Sync: $(date '+%Y-%m-%d %H:%M:%S')" 2>/dev/null
 
-# Pull latest safely
+# Pull latest
 git pull origin main --rebase
 if [ $? -ne 0 ]; then
     ./notify.sh "Git Pull Failed at $(date)"

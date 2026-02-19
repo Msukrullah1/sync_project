@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ==============================
-#  Sync Monitor Bot (Error Mode)
+#  Sync Monitor Bot - Error Only
 # ==============================
 
-BOT_TOKEN="PASTE_YOUR_OLD_WORKING_BOT_TOKEN_HERE"
+BOT_TOKEN="YAHAN_APNA_PURANA_WORKING_BOT_TOKEN_DALO"
 CHAT_ID="6403536553"
 
 send_error() {
