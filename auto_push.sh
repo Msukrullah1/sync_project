@@ -1,18 +1,21 @@
 #!/bin/bash
 
-cd ~/sync_project || exit
+PROJECT_DIR="$HOME/sync_project"
+LOG_FILE="$PROJECT_DIR/cron.log"
 
-# Pull latest changes first
-git pull origin main
+cd "$PROJECT_DIR" || exit 1
 
-# Add all changes
-git add .
+# Pull latest safely
+git pull origin main --rebase
 
-# Check if there is anything to commit
+# Only track .sh files
+git add *.sh 2>/dev/null
+
+# Check for changes
 if ! git diff-index --quiet HEAD --; then
-    git commit -m "Auto Sync: $(date '+%Y-%m-%d %H:%M:%S')"
+    git commit -m "Smart Sync (.sh only): $(date '+%Y-%m-%d %H:%M:%S')"
     git push origin main
-    echo "Auto Push Successful ✅"
+    echo "[$(date)] Smart Push Successful ✅" >> "$LOG_FILE"
 else
-    echo "No changes to push ✔"
+    echo "[$(date)] No .sh changes ✔" >> "$LOG_FILE"
 fi
