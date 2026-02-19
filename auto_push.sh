@@ -14,21 +14,24 @@ curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
 
 cd "$PROJECT_DIR" || exit 1
 
-# Add & commit local changes
+# First pull safely (without rebase)
+git pull origin main
+
+if [ $? -ne 0 ]; then
+    echo "[$(date)] Pull failed ❌" >> "$LOG_FILE"
+    send_notification "❌ Pull Failed at $(date)"
+    exit 1
+fi
+
+# Add local changes
 git add . 2>/dev/null
 
+# Commit if needed
 if ! git diff-index --quiet HEAD --; then
     git commit -m "Auto Sync: $(date '+%Y-%m-%d %H:%M:%S')"
     git push origin main
     echo "[$(date)] Push Successful ✅" >> "$LOG_FILE"
     send_notification "✅ Auto Push Successful at $(date)"
-fi
-
-# Pull latest safely
-git pull origin main --rebase
-
-if [ $? -ne 0 ]; then
-    echo "[$(date)] Merge conflict detected ❌" >> "$LOG_FILE"
-    send_notification "❌ Merge Conflict Detected at $(date)"
-    exit 1
+else
+    echo "[$(date)] No changes ✔" >> "$LOG_FILE"
 fi
