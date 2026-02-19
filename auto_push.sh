@@ -14,30 +14,21 @@ curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
 
 cd "$PROJECT_DIR" || exit 1
 
-# FIRST: add & commit any local changes
+# Add & commit local changes
 git add . 2>/dev/null
 
 if ! git diff-index --quiet HEAD --; then
-    git commit -m "Pre-sync commit: $(date '+%Y-%m-%d %H:%M:%S')"
+    git commit -m "Auto Sync: $(date '+%Y-%m-%d %H:%M:%S')"
+    git push origin main
+    echo "[$(date)] Push Successful ✅" >> "$LOG_FILE"
+    send_notification "✅ Auto Push Successful at $(date)"
 fi
 
-# THEN: pull safely
+# Pull latest safely
 git pull origin main --rebase
 
 if [ $? -ne 0 ]; then
     echo "[$(date)] Merge conflict detected ❌" >> "$LOG_FILE"
     send_notification "❌ Merge Conflict Detected at $(date)"
     exit 1
-fi
-
-# NOW: only track .sh files
-git add *.sh 2>/dev/null
-
-if ! git diff-index --quiet HEAD --; then
-    git commit -m "Smart Sync (.sh only): $(date '+%Y-%m-%d %H:%M:%S')"
-    git push origin main
-    echo "[$(date)] Smart Push Successful ✅" >> "$LOG_FILE"
-    send_notification "✅ Auto Push Successful at $(date)"
-else
-    echo "[$(date)] No .sh changes ✔" >> "$LOG_FILE"
 fi

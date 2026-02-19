@@ -134,3 +134,8 @@ error: Please commit or stash them.
 error: cannot pull with rebase: You have unstaged changes.
 error: Please commit or stash them.
 [Fri Feb 20 00:54:00 IST 2026] Merge conflict detected ❌
+[main a1f86e1] Pre-sync commit: 2026-02-20 00:55:00
+ 1 file changed, 5 insertions(+)
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[Fri Feb 20 00:55:00 IST 2026] Merge conflict detected ❌
