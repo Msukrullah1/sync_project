@@ -1,3 +1,4 @@
 cron.log
 *.log
 sync_backup.zip
+.env
