@@ -27,12 +27,18 @@ ALLOWED_WIFI2="Encore2"
 # Soft info limit (GB) for warning only
 ONEDRIVE_LIMIT=48
 
+# Zoho config
+ZOHO_REMOTE="zoho:"
+ZOHO_TOTAL_GB=55
+ZOHO_SYNC=1
+ZOHO_LIMIT_PCT=95
+
 # Data roots (still referenced for UI; no sync by default)
 LOCAL1="$HOME/storage/shared/Cloud-Sync-File"
-REMOTE1="onedrive:Cloud-Sync-File"
+REMOTE1="zoho:Cloud-Sync-File"
 
-LOCAL2="$HOME/storage/shared/HiRes_Songs"
-REMOTE2="onedrive:HiRes_Songs"
+LOCAL2="/storage/emulated/0/HiRes_Songs"
+REMOTE2="zoho:HIRES_SONGS"
 
 # Default behaviors
 MODE="auto"        # auto | manual | force | watch | preview
@@ -153,6 +159,12 @@ SD_USED=$(echo "$SD_RAW"  | awk '{print $3}')
 SD_FREE=$(echo "$SD_RAW"  | awk '{print $4}')
 SD_PCT=$(echo "$SD_RAW"   | awk '{print $5}' | tr -d '%'); SD_PCT=${SD_PCT:-0}
 
+ZOHO_RAW=$(rclone about "$ZOHO_REMOTE" 2>/dev/null)
+ZOHO_USED=$(echo "$ZOHO_RAW" | grep -i 'Used' | awk '{print $2}'); ZOHO_USED=${ZOHO_USED%.*}; ZOHO_USED=${ZOHO_USED:-0}
+ZOHO_FREE=$(( ZOHO_TOTAL_GB - ZOHO_USED ))
+[ "$ZOHO_FREE" -lt 0 ] && ZOHO_FREE=0
+ZOHO_PCT=$(( ZOHO_USED * 100 / ZOHO_TOTAL_GB ))
+
 OD_INFO=""; OD_TOTAL=""; OD_USED=""; OD_FREE=""; OD_PCT=0
 if [ "$OD_INFO_ON" -eq 1 ]; then
   OD_INFO=$(rclone about onedrive: 2>/dev/null)
@@ -230,7 +242,15 @@ else
   row "${D}Not Found${N}"
 fi
 
-row "${M}${B}☁ OneDrive${N}"
+row "${PK}${B}☁ Zoho WorkDrive [Sync ON]${N}"
+if [ -n "$ZOHO_RAW" ]; then
+  row "${B}${ZOHO_USED}G${N} / ${ZOHO_TOTAL_GB}G   Free: ${LM}${ZOHO_FREE}G${N}"
+  row "$(fpbar "$ZOHO_PCT" "$BARW")"
+else
+  row "${R}Cannot reach Zoho${N}"
+fi
+
+row "${M}${B}🔵 OneDrive [Display Only]${N}"
 if [ "$OD_INFO_ON" -eq 0 ]; then
   row "${Y}OD info disabled (--no-od).${N}"
 else
@@ -257,56 +277,76 @@ if [ "$MODE" = "preview" ]; then
   row "${Y}Preview mode: No syncing performed.${N}"; exit 0
 fi
 
-# ───── NO-SYNC DEFAULT ─────
-if [ "$OD_SYNC_ON" -ne 1 ]; then
-  dtop; row "${Y}OneDrive sync is OFF (view-only).${N}"
-  row "Enable later with: ${B}bash sync.sh manual --od-sync${N}"
-  dbot
-  log_msg "VIEW-ONLY run. No sync executed."
-else
-  # If you explicitly enabled --od-sync, warn & still ask user to confirm once.
-  dtop; row "${R}${B}⚠ OD SYNC ENABLED VIA FLAG (--od-sync)${N}"
-  row "Proceeding will mirror local→OneDrive (delete-during)."
-  row "Press ${B}Ctrl+C${N} to abort within 5 seconds..."
-  dbot; sleep 5
+# ───── ZOHO SYNC ─────
+run_sync(){
+  local NAME="$1" SRC="$2" DST="$3"
+  local LOG="$LOG_DIR/sync_${NAME}_$(date +%Y%m%d_%H%M%S).log"
+  echo ""; dtop; row "${SB}${B}🔄 SYNCING: ${NAME}${N}"
+  row "${D}▸ FROM: ${SRC}${N}"; row "${D}▸ TO  : ${DST}${N}"; dmid
+  rclone sync "$SRC" "$DST" --delete-during --log-file="$LOG" --log-level INFO --progress 2>&1 | while IFS= read -r l; do echo -e " ${D}${l}${N}"; done
+  local UP_COUNT=0 DEL_COUNT=0
+  if [ -f "$LOG" ]; then
+    UP_COUNT=$(grep ": Copied (new)" "$LOG" 2>/dev/null | wc -l | tr -d ' ')
+    DEL_COUNT=$(grep ": Deleted" "$LOG" 2>/dev/null | grep -v "stats\|Checks\|Transferred" | wc -l | tr -d ' ')
+  fi
+  UP_COUNT=$(( UP_COUNT + 0 )); DEL_COUNT=$(( DEL_COUNT + 0 ))
+  TOTAL_UPLOADED=$(( TOTAL_UPLOADED + UP_COUNT ))
+  TOTAL_DELETED=$(( TOTAL_DELETED + DEL_COUNT ))
+  drow "  ✔ Done!   ⬆ ${UP_COUNT} uploaded   🗑 ${DEL_COUNT} deleted" 2>/dev/null || row "  ✔ Done!   ⬆ ${UP_COUNT} uploaded   🗑 ${DEL_COUNT} deleted"
+  dbot; log_msg "SYNC ${NAME} ⬆${UP_COUNT} 🗑${DEL_COUNT}"
+}
 
-  # --- Real sync steps (only if allowed explicitly) ---
-  run_sync(){
-    local NAME="$1" SRC="$2" DST="$3"
-    local LOG="$LOG_DIR/sync_${NAME}_$(date +%Y%m%d_%H%M%S).log"
-    echo ""; dtop; row "${SB}${B}🔄 SYNCING: ${NAME}${N}"
-    row "${D}SRC: ${SRC}${N}"; row "${D}DST: ${DST}${N}"; dmid
-    rclone sync "$SRC" "$DST" --delete-during --log-file="$LOG" --log-level INFO --progress 2>&1 | while IFS= read -r l; do echo -e " ${D}${l}${N}"; done
-    dbot; log_msg "SYNC ${NAME} (explicit)"
-  }
-  run_sync "Cloud-Sync-File" "$LOCAL1" "$REMOTE1"
-  run_sync "HiRes_Songs"     "$LOCAL2" "$REMOTE2"
+TOTAL_UPLOADED=0
+TOTAL_DELETED=0
+
+if [ "$ZOHO_SYNC" -eq 1 ]; then
+  if [ "$ZOHO_PCT" -ge "$ZOHO_LIMIT_PCT" ]; then
+    dtop; row "${R}${B}⛔ ZOHO STORAGE FULL — SYNC STOPPED (${ZOHO_PCT}%)${N}"; dbot
+    log_msg "ABORTED - Zoho full ${ZOHO_USED}G/${ZOHO_TOTAL_GB}G"
+  else
+    run_sync "Cloud-Sync-File" "$LOCAL1" "$REMOTE1"
+    run_sync "HiRes_Songs"     "$LOCAL2" "$REMOTE2"
+  fi
 fi
 
 # ───── FINAL SUMMARY + TELEGRAM ─────
 echo ""; dtop
 row "${G}${B}✅ TASK COMPLETED${N}"
 dmid
+row "${B}⬆ Uploaded  :${N} ${LM}${TOTAL_UPLOADED:-0}${N} files"
+row "${B}🗑 Deleted   :${N} ${R}${TOTAL_DELETED:-0}${N} files"
 row "${B}Battery     :${N} ${BAT}% (${BAT_STATUS})"
+row "${B}☁ Zoho      :${N} ${ZOHO_USED}G / ${ZOHO_TOTAL_GB}G (${ZOHO_PCT}%)"
 if [ "$OD_INFO_ON" -eq 1 ]; then
-  row "${B}OneDrive    :${N} ${OD_USED:-N/A}G / ${OD_TOTAL:-N/A}G used"
-else
-  row "${B}OneDrive    :${N} Info disabled"
+  row "${B}OneDrive    :${N} ${OD_USED:-N/A}G / ${OD_TOTAL:-N/A}G (Display Only)"
 fi
 row "${B}Log         :${N} ${D}${MASTER_LOG}${N}"
 row "${B}Finished At :${N} ${O}$(date '+%H:%M:%S')${N}"
 dbot; echo ""
 
 BAT_TB=$(tbar "$BAT" $((BARW)))
+ZH_TB=$(tbar "$ZOHO_PCT" $((BARW)))
 OD_TB=$(tbar "$OD_PCT" $((BARW)))
-REPORT="📣 <b>SYNC VIEW REPORT</b>
-🔋 Battery : ${BAT}% (${BAT_STATUS})
+REPORT="🚀 <b>SUKRULLAH PRO SYNC v3.8</b>
+
+⚙️ <b>SYSTEM</b>
+🔋 Battery : <b>${BAT}%</b> (${BAT_STATUS})
+<code>${BAT_TB}</code>
 📶 Network : ${CURRENT_WIFI:-Mobile Data}
 ⚙️ Mode    : ${MODE}
-☁️ OneDrive: $([ "$OD_INFO_ON" -eq 1 ] && echo "${OD_USED:-N/A}G / ${OD_TOTAL:-N/A}G (Free: ${OD_FREE:-N/A}G)" || echo "Info disabled")
-<b>Status</b> : $([ "$OD_SYNC_ON" -eq 1 ] && echo "SYNC RUN (explicit)" || echo "VIEW-ONLY (no sync)")
-<code>${BAT_TB}</code>
-<code>$([ "$OD_INFO_ON" -eq 1 ] && echo "${OD_TB}" || echo "────────────")</code>
+🕒 Time    : $(date '+%d %b %Y, %H:%M:%S')
+
+💾 <b>STORAGE</b>
+📱 Internal: ${INT_USED} / ${INT_TOTAL}  •  Free: ${INT_FREE}
+☁️ Zoho    : ${ZOHO_USED}G / ${ZOHO_TOTAL_GB}G  •  Free: ${ZOHO_FREE}G
+<code>${ZH_TB}</code>
+🔵 OneDrive: ${OD_USED:-N/A}G / ${OD_TOTAL:-N/A}G (Display Only)
+<code>${OD_TB}</code>
+
+📁 <b>SYNC RESULTS</b>
+⬆ Uploaded : <b>${TOTAL_UPLOADED:-0}</b> files
+🗑 Deleted  : <b>${TOTAL_DELETED:-0}</b> files
+
 📝 Log: ${MASTER_LOG}"
 send_telegram "$REPORT"
-log_msg "END (view-only=$((OD_SYNC_ON!=1)))"
+log_msg "END ⬆${TOTAL_UPLOADED:-0} 🗑${TOTAL_DELETED:-0}"
