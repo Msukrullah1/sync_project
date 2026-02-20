@@ -91,11 +91,14 @@ battery_icon(){ local pct=$1 s="$2" i="🔋"; case "$s" in CHARGING|Charging) i=
 tbar(){ local v=$1 w=${2:-$((BARW-4))}; [ "$v" -lt 0 ]&&v=0; [ "$v" -gt 100 ]&&v=100; local f=$(( v*w/100 )) out=""; for((i=1;i<=w;i++));do [ $i -le $f ]&&out+="█"||out+="·"; done; printf "%s %3d%%" "$out" "$v"; }
 
 send_telegram(){
- [ -z "$TG_TOKEN" ] && [ -z "$TG_CHAT_ID" ] && return 0
-  local msg="$1" f resp; f=$(mktemp); printf '%s' "$msg" > "$f"
+  [ -z "$TG_TOKEN" ] && [ -z "$TG_CHAT_ID" ] && return 0
+  local msg="$1" resp
   resp=$(curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            -d "chat_id=${TG_CHAT_ID}" -d "parse_mode=HTML" \
-            --data-urlencode "text=$(cat "$f")")
+            -d "chat_id=${TG_CHAT_ID}" \
+            -d "parse_mode=HTML" \
+            --data-urlencode "text=${msg}")
+  echo "$resp" | grep -q '"ok":true' || echo -e "${Y}ℹ TG send failed/skipped${N}"
+}
   rm -f "$f"; echo "$resp" | grep -q '"ok":true' || echo -e "${Y}ℹ TG send failed/skipped${N}"
 }
 
