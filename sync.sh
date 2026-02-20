@@ -27,18 +27,12 @@ ALLOWED_WIFI2="Encore2"
 # Soft info limit (GB) for warning only
 ONEDRIVE_LIMIT=48
 
-# Zoho config
-ZOHO_REMOTE="zoho:"
-ZOHO_TOTAL_GB=55
-ZOHO_SYNC=1
-ZOHO_LIMIT_PCT=95
-
 # Data roots (still referenced for UI; no sync by default)
 LOCAL1="$HOME/storage/shared/Cloud-Sync-File"
-REMOTE1="zoho:Cloud-Sync-File"
+REMOTE1="onedrive:Cloud-Sync-File"
 
-LOCAL2="/storage/emulated/0/HiRes_Songs"
-REMOTE2="zoho:HIRES_SONGS"
+LOCAL2="$HOME/storage/shared/HiRes_Songs"
+REMOTE2="onedrive:HiRes_Songs"
 
 # Default behaviors
 MODE="auto"        # auto | manual | force | watch | preview
@@ -158,12 +152,6 @@ SD_TOTAL=$(echo "$SD_RAW" | awk '{print $2}')
 SD_USED=$(echo "$SD_RAW"  | awk '{print $3}')
 SD_FREE=$(echo "$SD_RAW"  | awk '{print $4}')
 SD_PCT=$(echo "$SD_RAW"   | awk '{print $5}' | tr -d '%'); SD_PCT=${SD_PCT:-0}
-
-ZOHO_RAW=$(rclone about "$ZOHO_REMOTE" 2>/dev/null)
-ZOHO_USED=$(echo "$ZOHO_RAW" | grep -i 'Used' | awk '{print $2}'); ZOHO_USED=${ZOHO_USED%.*}; ZOHO_USED=${ZOHO_USED:-0}
-ZOHO_FREE=$(( ZOHO_TOTAL_GB - ZOHO_USED ))
-[ "$ZOHO_FREE" -lt 0 ] && ZOHO_FREE=0
-ZOHO_PCT=$(( ZOHO_USED * 100 / ZOHO_TOTAL_GB ))
 
 OD_INFO=""; OD_TOTAL=""; OD_USED=""; OD_FREE=""; OD_PCT=0
 if [ "$OD_INFO_ON" -eq 1 ]; then

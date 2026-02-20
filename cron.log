@@ -601,3 +601,10 @@ error: Please commit or stash them.
  1 file changed, 4 insertions(+)
 error: cannot pull with rebase: You have unstaged changes.
 error: Please commit or stash them.
+On branch main
+Your branch is ahead of 'origin/main' by 3 commits.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
