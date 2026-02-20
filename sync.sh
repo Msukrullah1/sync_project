@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
+source "$HOME/sync_project/.env"
 ##############################################
 # SUKRULLAH PRO SYNC v3.8 — OD View-Only Mode
 # Termux UI optimized for 6.67" 1080x2400 (20:9)
@@ -143,8 +144,9 @@ fi
 # ───── SYSTEM INFO ─────
 BAT=$(termux-battery-status 2>/dev/null | grep -o '"percentage":[[:space:]]*[0-9]\+' | grep -o '[0-9]\+'); BAT=${BAT:-0}
 BAT_STATUS=$(termux-battery-status 2>/dev/null | grep -o '"status":[[:space:]]*"[^"]*"' | cut -d'"' -f4); BAT_STATUS=${BAT_STATUS:-Unknown}
-CURRENT_WIFI=$(termux-wifi-connectioninfo 2>/dev/null | grep '"ssid"' | cut -d'"' -f4); [ "$CURRENT_WIFI" = "\<unknown ssid\>" ] && CURRENT_WIFI=""
+CURRENT_WIFI=$(termux-wifi-connectioninfo 2>/dev/null | grep .ssid. | tail -1 | cut -d'"' -f4); [ "$CURRENT_WIFI" = "<unknown ssid>" ] && CURRENT_WIFI=""
 
+[ "$CURRENT_WIFI" = "<unknown ssid>" ] && CURRENT_WIFI=""
 INT_RAW=$(df -h "$HOME/storage/shared" 2>/dev/null | awk 'NR==2')
 INT_TOTAL=$(echo "$INT_RAW" | awk '{print $2}')
 INT_USED=$(echo "$INT_RAW"  | awk '{print $3}')
@@ -330,7 +332,7 @@ REPORT="🚀 <b>SUKRULLAH PRO SYNC v3.8</b>
 ⚙️ <b>SYSTEM</b>
 🔋 Battery : <b>${BAT}%</b> (${BAT_STATUS})
 <code>${BAT_TB}</code>
-📶 Network : ${CURRENT_WIFI:-Mobile Data}
+📶 Network : $([ -n "$CURRENT_WIFI" ] && echo "$CURRENT_WIFI" || echo "Mobile Data")
 ⚙️ Mode    : ${MODE}
 🕒 Time    : $(date '+%d %b %Y, %H:%M:%S')
 
