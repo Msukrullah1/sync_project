@@ -99,8 +99,6 @@ send_telegram(){
             --data-urlencode "text=${msg}")
   echo "$resp" | grep -q '"ok":true' || echo -e "${Y}ℹ TG send failed/skipped${N}"
 }
-  rm -f "$f"; echo "$resp" | grep -q '"ok":true' || echo -e "${Y}ℹ TG send failed/skipped${N}"
-}
 
 # ───── CRON AUTOSYNC (as per system design) ─────
 setup_cron(){
