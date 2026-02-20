@@ -16,6 +16,7 @@ resetc() { printf "\033[0m"; }
 # ───── Config ─────
 # Secrets via ENV recommended:
 #   export TG_TOKEN=... ; export TG_CHAT_ID=...
+source "$HOME/sync_project/.env"
 TG_TOKEN="${TG_TOKEN:-}"
 TG_CHAT_ID="${TG_CHAT_ID:-}"
 
