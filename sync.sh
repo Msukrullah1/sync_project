@@ -47,6 +47,7 @@ fi
 # ───── Gather info ─────
 BAT=$(termux-battery-status 2>/dev/null | grep -o '"percentage":[[:space:]]*[0-9]\+' | grep -o '[0-9]\+'); BAT=${BAT:-0}
 BAT_STATUS=$(termux-battery-status 2>/dev/null | grep -o '"status":[[:space:]]*"[^"]*"' | cut -d'"' -f4); BAT_STATUS=${BAT_STATUS:-Unknown}
+export BAT BAT_STATUS CURRENT_WIFI
 CURRENT_WIFI=$(termux-wifi-connectioninfo 2>/dev/null | grep '"ssid"' | tail -1 | cut -d'"' -f4)
 [ "$CURRENT_WIFI" = "<unknown ssid>" ] && CURRENT_WIFI=""
 
