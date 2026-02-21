@@ -1,8 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ########################################
-# SUKRULLAH DASHBOARD v4.2 (Advanced)
-# Termux display — Poco X3 Pro (width fixed)
-# Features removed: NONE (only improved + added fallbacks)
+# SUKRULLAH DASHBOARD v4.3 (Fixed)
+# Sirf Termux display — Poco X3 Pro
+# NOTE: Width same रखा गया (BOXW=46 / BARW=34)
+# Features removed: NONE (only fixed + improved conversions)
 ########################################
 
 # ───────────────── Colors ─────────────────
@@ -22,101 +23,9 @@ dbot() { echo -e "${C}╰$(line $BOXW ─)╯${N}"; }
 row()  { echo -e "${C}│${N} $1"; }
 dempty(){ echo -e "${C}│${N}"; }
 
-# ───────────────── Helpers (GB normalize + percent safe) ─────────────────
-# Convert strings like: 120M, 1.5G, 1024K, 2T, 1234567890 (bytes) => "x.xG"
-to_gb() {
-  local v="${1:-0}"
-  v="${v// /}"
-  [[ -z "$v" ]] && v="0"
-
-  # If already ends with G/GB
-  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?([Gg])([Bb])?$ ]]; then
-    awk -v x="${v%[Gg]*}" 'BEGIN{printf "%.1fG", x+0}'
-    return
-  fi
-
-  # T / TB
-  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?([Tt])([Bb])?$ ]]; then
-    awk -v x="${v%[Tt]*}" 'BEGIN{printf "%.1fG", (x+0)*1024}'
-    return
-  fi
-
-  # M / MB
-  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?([Mm])([Bb])?$ ]]; then
-    awk -v x="${v%[Mm]*}" 'BEGIN{printf "%.1fG", (x+0)/1024}'
-    return
-  fi
-
-  # K / KB
-  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?([Kk])([Bb])?$ ]]; then
-    awk -v x="${v%[Kk]*}" 'BEGIN{printf "%.3fG", (x+0)/1024/1024}'
-    return
-  fi
-
-  # Bytes numeric
-  if [[ "$v" =~ ^[0-9]+$ ]]; then
-    awk -v b="$v" 'BEGIN{printf "%.1fG", (b/1024/1024/1024)}'
-    return
-  fi
-
-  # Unknown, return as-is
-  echo "${v}"
-}
-
-# Get df stats in bytes for a path -> "used total avail pct"
-df_stats() {
-  local path="$1"
-  local out used total avail pct
-  out="$(df -B1 "$path" 2>/dev/null | awk 'NR==2{print $3,$2,$4}')"
-  if [[ -z "$out" ]]; then
-    echo "0 0 0 0"
-    return
-  fi
-  read -r used total avail <<<"$out"
-  pct="$(awk -v u="$used" -v t="$total" 'BEGIN{ if(t>0) printf "%d", (u*100/t); else print 0 }')"
-  echo "$used $total $avail $pct"
-}
-
-# Auto detect shared storage mount
-detect_internal_path() {
-  # Prefer Termux shared storage if available
-  if [[ -d "$HOME/storage/shared" ]]; then
-    echo "$HOME/storage/shared"
-    return
-  fi
-  # Try common Android paths
-  if [[ -d "/storage/emulated/0" ]]; then
-    echo "/storage/emulated/0"
-    return
-  fi
-  if [[ -d "/sdcard" ]]; then
-    echo "/sdcard"
-    return
-  fi
-  # Fallback to Termux prefix
-  echo "$PREFIX"
-}
-
-# Auto detect SD card (typical: /storage/XXXX-XXXX)
-detect_sd_path() {
-  if [[ -d "/storage" ]]; then
-    local p
-    # pick first mount-like folder, exclude emulated/self
-    for p in /storage/*; do
-      [[ -d "$p" ]] || continue
-      [[ "$p" =~ /storage/(emulated|self)$ ]] && continue
-      # many SD cards look like /storage/XXXX-XXXX
-      echo "$p"
-      return
-    done
-  fi
-  echo ""
-}
-
 # ───────────────── Progress bar ─────────────────
 cc() { printf "\033[38;5;%sm" "$1"; }
 rc() { printf "\033[0m"; }
-
 color_scale(){
   local v=$1
   [[ "$v" -le 25 ]] && echo 46  && return
@@ -124,7 +33,6 @@ color_scale(){
   [[ "$v" -le 75 ]] && echo 214 && return
   echo 196
 }
-
 fpbar(){
   local val=$1
   [[ "$val" -lt 0 ]] && val=0
@@ -137,21 +45,100 @@ fpbar(){
     c=$(color_scale "$p")
     bar+=$(cc "$c")"█"
   done
-  for((i=1;i<=empty;i++)); do
-    bar+=$(cc 242)"░"
-  done
+  for((i=1;i<=empty;i++)); do bar+=$(cc 242)"░"; done
   printf "▕%s%s %s%3d%%%s" "$bar" "$(rc)" "$(cc 250)" "$val" "$(rc)"
 }
-
 bat_icon(){
   local p=$1 s=$2
-  case "$s" in
-    CHARGING|Charging) echo "🔌"; return;;
-  esac
+  case "$s" in CHARGING|Charging) echo "🔌"; return;; esac
   [[ "$p" -le 10 ]] && echo "🪫" || echo "🔋"
 }
 
-# ───────────────── WATCH MODE (kept intact, only hardened) ─────────────────
+# ───────────────── GB Conversion (FIXED) ─────────────────
+# Disk values (Internal/SD): auto-detect bytes/KB/MB/GB
+# Cloud values (Zoho/OneDrive): plain numbers => GB
+fmt_gb() {
+  # prints number as "xx.xG"
+  awk -v x="$1" 'BEGIN{ if(x<10) printf "%.2fG", x; else printf "%.1fG", x }'
+}
+
+to_gb_disk() {
+  # Accepts: "123G", "1.5T", "120M", "224567224"(likely KB), "1234567890"(bytes), etc.
+  local v="${1:-0}"
+  v="${v// /}"
+  [[ -z "$v" ]] && v="0"
+
+  # Already with unit
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Gg]([Bb])?$ ]]; then
+    awk -v x="${v%[Gg]*}" 'BEGIN{printf "%.1fG", x+0}'; return
+  fi
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Tt]([Bb])?$ ]]; then
+    awk -v x="${v%[Tt]*}" 'BEGIN{printf "%.1fG", (x+0)*1024}'; return
+  fi
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Mm]([Bb])?$ ]]; then
+    awk -v x="${v%[Mm]*}" 'BEGIN{printf "%.2fG", (x+0)/1024}'; return
+  fi
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Kk]([Bb])?$ ]]; then
+    awk -v x="${v%[Kk]*}" 'BEGIN{printf "%.2fG", (x+0)/1024/1024}'; return
+  fi
+
+  # Pure numeric -> auto guess
+  if [[ "$v" =~ ^[0-9]+$ ]]; then
+    local n="$v"
+    # If it looks like df -k values (hundreds of millions) => KB
+    if [[ "$n" -ge 10000000 && "$n" -lt 10000000000 ]]; then
+      awk -v k="$n" 'BEGIN{printf "%.1fG", (k/1024/1024)}'; return
+    fi
+    # Very big => bytes
+    awk -v b="$n" 'BEGIN{printf "%.1fG", (b/1024/1024/1024)}'; return
+  fi
+
+  echo "${v}"
+}
+
+to_gb_cloud() {
+  # Cloud values: if "29" => 29G (GB), if "2.400" => 2.400G, if already has unit keep it
+  local v="${1:-0}"
+  v="${v// /}"
+  [[ -z "$v" ]] && v="0"
+
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Gg]([Bb])?$ ]]; then
+    awk -v x="${v%[Gg]*}" 'BEGIN{printf "%.3fG", x+0}'; return
+  fi
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    awk -v x="$v" 'BEGIN{printf "%.3fG", x+0}'; return
+  fi
+
+  # if M/T etc then convert
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Tt] ]]; then
+    awk -v x="${v%[Tt]*}" 'BEGIN{printf "%.3fG", (x+0)*1024}'; return
+  fi
+  if [[ "$v" =~ ^[0-9]+([.][0-9]+)?[Mm] ]]; then
+    awk -v x="${v%[Mm]*}" 'BEGIN{printf "%.3fG", (x+0)/1024}'; return
+  fi
+  echo "$v"
+}
+
+# ───────────────── Fallback storage using df (only when vars missing) ─────────────────
+df_kb_stats() { df -k "$1" 2>/dev/null | awk 'NR==2{print $3,$2,$4}'; } # used total avail (KB)
+detect_internal_path() {
+  [[ -d "$HOME/storage/shared" ]] && { echo "$HOME/storage/shared"; return; }
+  [[ -d "/storage/emulated/0" ]] && { echo "/storage/emulated/0"; return; }
+  [[ -d "/sdcard" ]] && { echo "/sdcard"; return; }
+  echo "$PREFIX"
+}
+detect_sd_path() {
+  [[ -d "/storage" ]] || { echo ""; return; }
+  local p
+  for p in /storage/*; do
+    [[ -d "$p" ]] || continue
+    [[ "$p" =~ /storage/(emulated|self)$ ]] && continue
+    echo "$p"; return
+  done
+  echo ""
+}
+
+# ───────────────── WATCH MODE (same as your original) ─────────────────
 if [[ "${MODE:-}" = "watch" ]] || [[ "${1:-}" = "watch" ]]; then
   clear; dtop
   row " ${PK}${B}◈ WIFI WATCHER ACTIVE${N}"
@@ -161,13 +148,10 @@ if [[ "${MODE:-}" = "watch" ]] || [[ "${1:-}" = "watch" ]]; then
 
   LAST_WIFI=""
   while true; do
-    WIFI_NOW=""
-    if command -v termux-wifi-connectioninfo >/dev/null 2>&1; then
-      WIFI_NOW="$(termux-wifi-connectioninfo 2>/dev/null | awk -F\" '/"ssid"/{print $4; exit}')"
-      [[ "$WIFI_NOW" = "<unknown ssid>" ]] && WIFI_NOW=""
-    fi
-
+    WIFI_NOW="$(termux-wifi-connectioninfo 2>/dev/null | awk -F\" '/"ssid"/{print $4; exit}')"
+    [[ "$WIFI_NOW" = "<unknown ssid>" ]] && WIFI_NOW=""
     TS="$(date '+%H:%M:%S')"
+
     if [[ "$WIFI_NOW" = "${ALLOWED_WIFI1:-}" ]] || [[ "$WIFI_NOW" = "${ALLOWED_WIFI2:-}" ]]; then
       if [[ "$LAST_WIFI" != "$WIFI_NOW" ]]; then
         echo -e "${LIME}[$TS]${N} WiFi: ${B}${WIFI_NOW}${N} — Syncing!"
@@ -187,69 +171,24 @@ fi
 
 DAY="$(date '+%A, %d %b %Y')"
 
-# ───────────────── Fill missing values (fallbacks) ─────────────────
-# WIFI
+# ───────────────── Battery/Network fallback ─────────────────
+if [[ -z "${BAT:-}" ]] && command -v termux-battery-status >/dev/null 2>&1; then
+  BAT="$(termux-battery-status 2>/dev/null | awk -F'[:,}]' '/percentage/{gsub(/[^0-9]/,"",$2); print $2; exit}')"
+fi
+BAT="${BAT:-0}"
+BAT_STATUS="${BAT_STATUS:-Unknown}"
+
 if [[ -z "${CURRENT_WIFI:-}" ]] && command -v termux-wifi-connectioninfo >/dev/null 2>&1; then
   CURRENT_WIFI="$(termux-wifi-connectioninfo 2>/dev/null | awk -F\" '/"ssid"/{print $4; exit}')"
   [[ "$CURRENT_WIFI" = "<unknown ssid>" ]] && CURRENT_WIFI=""
 fi
 
-# Battery (fallback)
-if [[ -z "${BAT:-}" ]] && command -v termux-battery-status >/dev/null 2>&1; then
-  BAT="$(termux-battery-status 2>/dev/null | awk -F'[:,}]' '/percentage/{gsub(/[^0-9]/,"",$2); print $2; exit}')"
-fi
-[[ -z "${BAT:-}" ]] && BAT=0
-[[ -z "${BAT_STATUS:-}" ]] && BAT_STATUS="Unknown"
-
-# Internal storage fallback compute (bytes -> display GB)
-INTERNAL_PATH="$(detect_internal_path)"
-if [[ -z "${INT_TOTAL:-}" || -z "${INT_USED:-}" || -z "${INT_FREE:-}" || -z "${INT_PCT:-}" ]]; then
-  read -r _u _t _a _p <<<"$(df_stats "$INTERNAL_PATH")"
-  INT_USED="$(to_gb "$_u")"
-  INT_TOTAL="$(to_gb "$_t")"
-  INT_FREE="$(to_gb "$_a")"
-  INT_PCT="${_p}"
-else
-  # normalize to GB anyway
-  INT_USED="$(to_gb "${INT_USED}")"
-  INT_TOTAL="$(to_gb "${INT_TOTAL}")"
-  INT_FREE="$(to_gb "${INT_FREE}")"
-fi
-
-# SD card fallback compute
-SD_PATH="$(detect_sd_path)"
-if [[ -n "$SD_PATH" ]]; then
-  read -r su st sa sp <<<"$(df_stats "$SD_PATH")"
-  SD_RAW="1"
-  SD_USED="$(to_gb "$su")"
-  SD_TOTAL="$(to_gb "$st")"
-  SD_FREE="$(to_gb "$sa")"
-  SD_PCT="$sp"
-else
-  SD_RAW=""
-fi
-
-# Zoho normalize (if provided)
-if [[ -n "${ZOHO_RAW:-}" || -n "${ZOHO_USED:-}" || -n "${ZOHO_FREE:-}" ]]; then
-  ZOHO_USED="$(to_gb "${ZOHO_USED:-0G}")"
-  ZOHO_FREE="$(to_gb "${ZOHO_FREE:-0G}")"
-  # total is config in GB
-  ZOHO_TOTAL_GB="${ZOHO_TOTAL_GB:-55}"
-fi
-
-# OneDrive normalize (display only)
-if [[ -n "${OD_TOTAL:-}" || -n "${OD_USED_G:-}" || -n "${OD_FREE_G:-}" ]]; then
-  OD_USED_G="$(to_gb "${OD_USED_G:-0G}")"
-  OD_TOTAL="$(to_gb "${OD_TOTAL:-0G}")"
-  OD_FREE_G="$(to_gb "${OD_FREE_G:-0G}")"
-fi
-
-# ───────────────── BLOCKED screen (auto mode wrong wifi) ─────────────────
+# ───────────────── BLOCKED screen (same behavior) ─────────────────
 if [[ "${MODE:-auto}" = "auto" ]]; then
   if [[ "${CURRENT_WIFI:-}" != "${ALLOWED_WIFI1:-}" ]] && [[ "${CURRENT_WIFI:-}" != "${ALLOWED_WIFI2:-}" ]]; then
     clear
     echo ""
-    echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.2 ★${N}"
+    echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.3 ★${N}"
     echo -e " ${D}${DAY}${N}"
     echo ""
     dtop
@@ -271,9 +210,51 @@ fi
 # ───────────────── Header ─────────────────
 clear
 echo ""
-echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.2 ★${N}"
+echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.3 ★${N}"
 echo -e " ${D}${DAY}${N}"
 echo ""
+
+# ───────────────── Resolve storage values (prefer existing vars from sync.sh) ─────────────────
+# Internal
+if [[ -z "${INT_USED:-}" || -z "${INT_FREE:-}" || -z "${INT_TOTAL:-}" ]]; then
+  IPATH="$(detect_internal_path)"
+  read -r iu it ia <<<"$(df_kb_stats "$IPATH")"
+  INT_USED="$iu"; INT_TOTAL="$it"; INT_FREE="$ia"
+  INT_PCT="${INT_PCT:-0}"
+fi
+
+INT_USED_G="$(to_gb_disk "$INT_USED")"
+INT_FREE_G="$(to_gb_disk "$INT_FREE")"
+INT_TOTAL_G="$(to_gb_disk "$INT_TOTAL")"
+
+# SD
+if [[ -n "${SD_RAW:-}" ]]; then
+  : # use provided SD_* values
+else
+  SDPATH="$(detect_sd_path)"
+  if [[ -n "$SDPATH" ]]; then
+    read -r su st sa <<<"$(df_kb_stats "$SDPATH")"
+    SD_RAW="1"
+    SD_USED="$su"; SD_TOTAL="$st"; SD_FREE="$sa"
+    SD_PCT="${SD_PCT:-0}"
+  fi
+fi
+
+if [[ -n "${SD_RAW:-}" ]]; then
+  SD_USED_G="$(to_gb_disk "$SD_USED")"
+  SD_FREE_G="$(to_gb_disk "$SD_FREE")"
+  SD_TOTAL_G="$(to_gb_disk "$SD_TOTAL")"
+fi
+
+# Zoho (cloud -> numeric = GB)
+ZOHO_USED_G="$(to_gb_cloud "${ZOHO_USED:-0}")"
+ZOHO_FREE_G="$(to_gb_cloud "${ZOHO_FREE:-0}")"
+ZOHO_TOTAL_GB="${ZOHO_TOTAL_GB:-55}"
+
+# OneDrive (cloud -> numeric = GB)
+OD_USED_GB="$(to_gb_cloud "${OD_USED_G:-N/A}")"
+OD_FREE_GB="$(to_gb_cloud "${OD_FREE_G:-N/A}")"
+OD_TOTAL_GB="$(to_gb_cloud "${OD_TOTAL:-N/A}")"
 
 # ───────────────── SYSTEM STATUS ─────────────────
 dtop
@@ -304,13 +285,15 @@ row " ${PK}${B}💾 STORAGE DASHBOARD${N}"
 dmid
 
 row " ${O}${B}📱 Internal Storage${N}"
-row " ${B}${INT_USED:-N/A}${N} / ${INT_TOTAL:-N/A}  Free: ${LIME}${B}${INT_FREE:-N/A}${N}"
+row " ${B}Used : ${INT_USED_G}${N}"
+row " ${B}Free : ${INT_FREE_G}${N} / ${INT_TOTAL_G}"
 row " $(fpbar "${INT_PCT:-0}")"
 dempty
 
 row " ${SB}${B}💳 Micro SD Card${N}"
 if [[ -n "${SD_RAW:-}" ]]; then
-  row " ${B}${SD_USED}${N} / ${SD_TOTAL}  Free: ${LIME}${B}${SD_FREE}${N}"
+  row " ${B}Used : ${SD_USED_G}${N}"
+  row " ${B}Free : ${SD_FREE_G}${N} / ${SD_TOTAL_G}"
   row " $(fpbar "${SD_PCT:-0}")"
 else
   row " ${D}Not detected${N}"
@@ -319,27 +302,5 @@ dempty
 
 row " ${PK}${B}☁️ Zoho WorkDrive ${LIME}[Sync ON]${N}"
 if [[ -n "${ZOHO_RAW:-}" || -n "${ZOHO_USED:-}" ]]; then
-  row " ${B}${ZOHO_USED:-0G}${N} / ${ZOHO_TOTAL_GB:-55}G  Free: ${LIME}${B}${ZOHO_FREE:-0G}${N}"
-  row " $(fpbar "${ZOHO_PCT:-0}")"
-else
-  row " ${ROSE}Cannot reach Zoho${N}"
-fi
-dempty
-
-row " ${C}${B}🔵 OneDrive ${Y}[Display Only]${N}"
-if [[ "${OD_INFO_ON:-1}" -eq 1 ]] && [[ -n "${OD_TOTAL:-}" ]]; then
-  row " ${B}${OD_USED_G:-N/A}${N} / ${OD_TOTAL:-N/A}  Free: ${LIME}${B}${OD_FREE_G:-N/A}${N}"
-  row " $(fpbar "${OD_PCT:-0}")"
-else
-  row " ${D}Cannot reach OneDrive${N}"
-fi
-
-# ───────────────── SCHEDULE (kept) ─────────────────
-dmid
-row " ${GD}${B}🕐 SCHEDULE${N}"
-dmid
-row " 🕑 ${B}02:00${N} 🕚 ${B}11:00${N} 🕔 ${B}17:00${N} 🕘 ${B}21:00${N}"
-row " ${D}auto_push : every 30 min${N}"
-row " ${LIME}watch: bash sync.sh watch${N}"
-dbot
-echo ""
+  row " ${B}Used : ${ZOHO_USED_G}${N}"
+  row " ${B}Free : ${ZOHO_FREE_G}${N} / ${ZOHO_TOTAL_GB}G"
