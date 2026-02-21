@@ -42,6 +42,7 @@ color_scale(){
   [ "$v" -le 50 ] && echo 190 && return
   [ "$v" -le 75 ] && echo 214 && return
   echo 196
+  echo 34
 }
 fpbar(){
   local val=$1
