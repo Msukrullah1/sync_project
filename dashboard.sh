@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ########################################
-# SUKRULLAH DASHBOARD v4.5 FINAL
+# SUKRULLAH DASHBOARD v4.6 FINAL (SD FIX)
 # Termux display — Poco X3 Pro (width fixed)
 # Features removed: NONE
 ########################################
@@ -22,7 +22,7 @@ dbot() { echo -e "${C}╰$(line $BOXW ─)╯${N}"; }
 row()  { echo -e "${C}│${N} $1"; }
 dempty(){ echo -e "${C}│${N}"; }
 
-# ───── Safe numeric percent ─────
+# ───── Helpers ─────
 pct_safe() {
   local v="${1:-0}"
   v="$(echo "$v" | tr -cd '0-9')"
@@ -32,7 +32,6 @@ pct_safe() {
   echo "$v"
 }
 
-# ───── df helpers (GB always) ─────
 to_gb_bytes(){ awk -v b="${1:-0}" 'BEGIN{printf "%.1fG", (b/1024/1024/1024)}'; }
 
 df_stats() {
@@ -52,50 +51,80 @@ detect_internal_path(){
   echo "$PREFIX"
 }
 
-detect_sd_path(){
+# ✅ SD ROOT DETECTOR (aapke case me /storage/F453-D575)
+detect_sd_path() {
+  local p rp root
+
+  # 1) Termux official external symlink → convert to SD root
+  for p in "$HOME/storage/external-1" "$HOME/storage/external-2"; do
+    if [[ -e "$p" ]]; then
+      rp="$(readlink -f "$p" 2>/dev/null)"
+      # e.g. /storage/F453-D575/Android/data/com.termux/files
+      if [[ -n "$rp" ]]; then
+        if [[ "$rp" == */Android/data/com.termux/files* ]]; then
+          root="${rp%/Android/data/com.termux/files*}"
+          [[ -d "$root" ]] && { echo "$root"; return; }
+        fi
+        [[ -d "$rp" ]] && { echo "$rp"; return; }
+      fi
+    fi
+  done
+
+  # 2) /storage/XXXX-XXXX
   if [[ -d "/storage" ]]; then
-    local p
     for p in /storage/*; do
       [[ -d "$p" ]] || continue
       [[ "$p" =~ /storage/(emulated|self)$ ]] && continue
-      echo "$p"; return
+      if echo "$p" | grep -Eq '/storage/[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'; then
+        echo "$p"; return
+      fi
     done
   fi
+
+  # 3) /mnt/media_rw/XXXX-XXXX
+  if [[ -d "/mnt/media_rw" ]]; then
+    for p in /mnt/media_rw/*; do
+      [[ -d "$p" ]] || continue
+      if echo "$p" | grep -Eq '/mnt/media_rw/[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'; then
+        echo "$p"; return
+      fi
+    done
+  fi
+
   echo ""
 }
 
-# ───── Progress bars (TERMUX SAFE) ─────
+# ───── Progress bar ─────
 cc() { printf "\033[38;5;%sm" "$1"; }
 rc() { printf "\033[0m"; }
 
-# bar style: "bat" greenish, "stor" bluish
+# type: bat | stor
 fpbar(){
   local val="$(pct_safe "$1")"
   local type="${2:-stor}"
   local filled=$(( val * BARW / 100 ))
   local empty=$(( BARW - filled ))
-  local bar="" i c p
+  local bar="" i p c
 
   for((i=1;i<=filled;i++)); do
     p=$(( i*100/BARW ))
     if [[ "$type" = "bat" ]]; then
-      # green -> yellow -> red
+      # green->yellow->red
       if   (( p<=25 )); then c=46
       elif (( p<=50 )); then c=190
       elif (( p<=75 )); then c=214
       else c=196
       fi
     else
-      # storage = blue shades
+      # storage blue shades
       if   (( p<=50 )); then c=39
       elif (( p<=80 )); then c=33
       else c=27
       fi
     fi
-    bar+=$(cc "$c")"#"
+    bar+=$(cc "$c")"█"
   done
-  for((i=1;i<=empty;i++)); do bar+=$(cc 242)"."; done
-
+  for((i=1;i<=empty;i++)); do bar+=$(cc 242)"░"; done
   printf "▕%s%s %s%3d%%%s" "$bar" "$(rc)" "$(cc 250)" "$val" "$(rc)"
 }
 
@@ -154,7 +183,7 @@ fi
 BAT="$(pct_safe "${BAT:-0}")"
 BAT_STATUS="${BAT_STATUS:-Unknown}"
 
-# ───── REAL STORAGE from df (GB always) ─────
+# ───── STORAGE (GB from df) ─────
 INT_PATH="$(detect_internal_path)"
 read -r IU IT IF IP < <(df_stats "$INT_PATH")
 INT_USED="$(to_gb_bytes "$IU")"
@@ -162,6 +191,7 @@ INT_TOTAL="$(to_gb_bytes "$IT")"
 INT_FREE="$(to_gb_bytes "$IF")"
 INT_PCT="$(pct_safe "$IP")"
 
+# ✅ SD from detected SD root
 SD_PATH="$(detect_sd_path)"
 SD_RAW=""
 SD_PCT=0
@@ -181,7 +211,7 @@ if [[ "${MODE:-auto}" = "auto" ]]; then
   if [[ "${CURRENT_WIFI:-}" != "${ALLOWED_WIFI1:-}" ]] && [[ "${CURRENT_WIFI:-}" != "${ALLOWED_WIFI2:-}" ]]; then
     clear
     echo ""
-    echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.5 ★${N}"
+    echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.6 ★${N}"
     echo -e " ${D}${DAY}${N}"
     echo ""
     dtop
@@ -203,7 +233,7 @@ fi
 # ───── Header ─────
 clear
 echo ""
-echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.5 ★${N}"
+echo -e " ${GD}${B}★ SUKRULLAH PRO SYNC v4.6 ★${N}"
 echo -e " ${D}${DAY}${N}"
 echo ""
 
@@ -275,4 +305,3 @@ row " ${D}auto_push : every 30 min${N}"
 row " ${LIME}watch: bash sync.sh watch${N}"
 dbot
 echo ""
-``
