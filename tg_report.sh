@@ -1,8 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ########################################
-# SUKRULLAH TELEGRAM REPORT v4.5 FINAL
+# SUKRULLAH TELEGRAM REPORT v4.6 FINAL (SD FIX)
 # - Emoji bars (always visible on Telegram)
-# - Internal/SD storage in GB via df
+# - Internal/SD in GB via df
 # - Safe send (data-urlencode)
 ########################################
 
@@ -12,7 +12,7 @@ ENV_FILE="$HOME/sync_project/.env"
 TG_TOKEN="${TG_TOKEN:-}"
 TG_CHAT_ID="${TG_CHAT_ID:-}"
 
-# Exit if missing (OR condition)
+# Exit if missing
 [[ -z "$TG_TOKEN" || -z "$TG_CHAT_ID" ]] && exit 0
 
 # ───── Helpers ─────
@@ -45,20 +45,46 @@ detect_internal_path(){
   echo "$PREFIX"
 }
 
-detect_sd_path(){
+# ✅ SD ROOT DETECTOR (external-1 -> /storage/F453-D575)
+detect_sd_path() {
+  local p rp root
+
+  for p in "$HOME/storage/external-1" "$HOME/storage/external-2"; do
+    if [[ -e "$p" ]]; then
+      rp="$(readlink -f "$p" 2>/dev/null)"
+      if [[ -n "$rp" ]]; then
+        if [[ "$rp" == */Android/data/com.termux/files* ]]; then
+          root="${rp%/Android/data/com.termux/files*}"
+          [[ -d "$root" ]] && { echo "$root"; return; }
+        fi
+        [[ -d "$rp" ]] && { echo "$rp"; return; }
+      fi
+    fi
+  done
+
   if [[ -d "/storage" ]]; then
-    local p
     for p in /storage/*; do
       [[ -d "$p" ]] || continue
       [[ "$p" =~ /storage/(emulated|self)$ ]] && continue
-      echo "$p"; return
+      if echo "$p" | grep -Eq '/storage/[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'; then
+        echo "$p"; return
+      fi
     done
   fi
+
+  if [[ -d "/mnt/media_rw" ]]; then
+    for p in /mnt/media_rw/*; do
+      [[ -d "$p" ]] || continue
+      if echo "$p" | grep -Eq '/mnt/media_rw/[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'; then
+        echo "$p"; return
+      fi
+    done
+  fi
+
   echo ""
 }
 
-# ───── Emoji bar (Telegram perfect) ─────
-# usage: ebar PCT FILL EMPTY LEN
+# Emoji bar for Telegram
 ebar() {
   local pct="$(pct_safe "$1")"
   local fill="${2:-🟩}"
@@ -72,7 +98,7 @@ ebar() {
   printf "%s %3d%%" "$out" "$pct"
 }
 
-# ───── Battery + network fallbacks ─────
+# ───── Battery + WiFi fallback ─────
 if command -v termux-battery-status >/dev/null 2>&1; then
   BJSON="$(termux-battery-status 2>/dev/null)"
   [[ -z "${BAT:-}" ]] && BAT="$(echo "$BJSON" | awk -F'[:,}]' '/percentage/{gsub(/[^0-9]/,"",$2); print $2; exit}')"
@@ -87,7 +113,7 @@ if [[ -z "${CURRENT_WIFI:-}" ]] && command -v termux-wifi-connectioninfo >/dev/n
 fi
 NET="$( [[ -n "${CURRENT_WIFI:-}" ]] && echo "${CURRENT_WIFI}" || echo "Mobile Data" )"
 
-# ───── Internal/SD (GB always) ─────
+# ───── Internal/SD storage (GB) ─────
 INT_PATH="$(detect_internal_path)"
 read -r IU IT IF IP < <(df_stats "$INT_PATH")
 INT_USED="$(to_gb_bytes "$IU")"
@@ -109,7 +135,7 @@ if [[ -n "$SD_PATH" ]]; then
   fi
 fi
 
-# Zoho / OneDrive (your existing variables, just sanitize percent)
+# Zoho / OneDrive (use existing sync vars)
 ZOHO_TOTAL_GB="${ZOHO_TOTAL_GB:-55}"
 ZOHO_USED="${ZOHO_USED:-0}G"
 ZOHO_FREE="${ZOHO_FREE:-0}G"
@@ -120,14 +146,13 @@ OD_TOTAL="${OD_TOTAL:-N/A}"
 OD_FREE_G="${OD_FREE_G:-N/A}"
 OD_PCT="$(pct_safe "${OD_PCT:-0}")"
 
-# ───── Bars (battery & each storage unique) ─────
+# ───── Bars (unique colors) ─────
 BAT_BAR="$(ebar "$BAT" "🟩" "⬛" 16)"
 INT_BAR="$(ebar "$INT_PCT" "🟦" "⬜" 16)"
 SD_BAR="$(ebar "$SD_PCT" "🟫" "⬜" 16)"
 ZH_BAR="$(ebar "$ZOHO_PCT" "🟪" "⬜" 16)"
 OD_BAR="$(ebar "$OD_PCT" "🟦" "⬜" 16)"
 
-# icons
 BICON="🔋"
 case "$BAT_STATUS" in
   CHARGING|Charging) BICON="⚡🔋" ;;
@@ -141,7 +166,7 @@ NET_ESC="$(html_escape "$NET")"
 MODE_ESC="$(html_escape "$MODE")"
 LOG_ESC="$(html_escape "${MASTER_LOG:-sync_logs/master_sync.log}")"
 
-REPORT="🛰️ <b>SUKRULLAH PRO SYNC</b> <i>v4.5</i>
+REPORT="🛰️ <b>SUKRULLAH PRO SYNC</b> <i>v4.6</i>
 
 <b>🧩 SYSTEM</b>
 ${BICON} Battery: <b>${BAT}%</b> (${BAT_STATUS})
@@ -192,4 +217,3 @@ else
   echo "⚠️ TG send failed"
   echo "$resp"
 fi
-``
