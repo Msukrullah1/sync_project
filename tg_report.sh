@@ -31,7 +31,7 @@ bat_ebar(){
   local bar="" i filled_em
   [ "$v" -le 20 ] && filled_em="🟥" || filled_em="🟩"
   for((i=1;i<=w;i++)); do
-    [ $i -le $f ] && bar+="$filled_em" || bar+="⬛"
+    [ $i -le $f ] && bar+="$filled_em" || bar+="◻"
   done
   printf "%s  %d%%" "$bar" "$v"
 }
@@ -45,7 +45,7 @@ storage_ebar(){
   local f=$(( v * w / 100 ))
   local bar="" i
   for((i=1;i<=w;i++)); do
-    [ $i -le $f ] && bar+="🟦" || bar+="⬛"
+    [ $i -le $f ] && bar+="◼" || bar+="◻"
   done
   printf "%s  %d%%" "$bar" "$v"
 }

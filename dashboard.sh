@@ -42,7 +42,29 @@ color_scale(){
   [ "$v" -le 50 ] && echo 190 && return
   [ "$v" -le 75 ] && echo 214 && return
   echo 196
+}
+bat_scale(){
+  local v=$1
+  [ "$v" -le 20 ] && echo 196 && return
+  [ "$v" -le 40 ] && echo 214 && return
+  [ "$v" -le 60 ] && echo 220 && return
+  [ "$v" -le 80 ] && echo 118 && return
   echo 34
+}
+batbar(){
+  local val=$1
+  [ "$val" -lt 0 ] && val=0
+  [ "$val" -gt 100 ] && val=100
+  local filled=$(( val * BARW / 100 ))
+  local empty=$(( BARW - filled ))
+  local bar="" i c p
+  for((i=1;i<=filled;i++)); do
+    p=$(( i*100/BARW ))
+    c=$(bat_scale "$p")
+    bar+=$(cc "$c")"█"
+  done
+  for((i=1;i<=empty;i++)); do bar+=$(cc 242)"░"; done
+  printf "▕%s%s %s%3d%%%s" "$bar" "$(rc)" "$(cc 250)" "$val" "$(rc)"
 }
 fpbar(){
   local val=$1
@@ -132,7 +154,7 @@ dtop
 row "  ${PK}${B}⚡ SYSTEM STATUS${N}"
 dmid
 row "  $(bat_icon "${BAT:-0}" "${BAT_STATUS:-Unknown}") ${B}Battery${N}   ${Y}${B}${BAT:-0}%${N} ${D}(${BAT_STATUS:-Unknown})${N}"
-row "  $(fpbar "${BAT:-0}")"
+row "  $(batbar "${BAT:-0}")"
 dempty
 if [ "${MODE:-auto}" = "force" ]; then
   row "  📡 ${B}Network${N}   ${ROSE}Mobile Data (Force)${N}"
