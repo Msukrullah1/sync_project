@@ -22,7 +22,7 @@ fmt_gb(){
 }
 
 # ───── Battery Emoji Bar ─────
-# <=20% = 🟥 (red), >20% = 🟩 (green), empty = ⬛
+# <=20% = 🟥 red, >20% = 🟩 green, empty = ⬛
 bat_ebar(){
   local v=$1 w=20
   [ "$v" -lt 0 ] && v=0
