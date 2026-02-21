@@ -50,8 +50,8 @@ BAT_STATUS=$(termux-battery-status 2>/dev/null | grep -o '"status":[[:space:]]*"
 CURRENT_WIFI=$(termux-wifi-connectioninfo 2>/dev/null | grep '"ssid"' | tail -1 | cut -d'"' -f4)
 [ "$CURRENT_WIFI" = "<unknown ssid>" ] && CURRENT_WIFI=""
 
-INT_RAW=$(df -h "$HOME/storage/shared" 2>/dev/null | awk 'NR==2')
-INT_TOTAL=$(echo "$INT_RAW" | awk '{print $2}')
+INT_RAW=$(df -h /storage/emulated/0 2>/dev/null | awk 'NR==2')
+[ -z "$INT_RAW" ] && INT_RAW=$(df -h "$HOME/storage/shared" 2>/dev/null | awk 'NR==2')INT_TOTAL=$(echo "$INT_RAW" | awk '{print $2}')
 INT_USED=$(echo "$INT_RAW"  | awk '{print $3}')
 INT_FREE=$(echo "$INT_RAW"  | awk '{print $4}')
 INT_PCT=$(echo "$INT_RAW"   | awk '{print $5}' | tr -d '%'); INT_PCT=${INT_PCT:-0}

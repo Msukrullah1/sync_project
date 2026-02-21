@@ -651,3 +651,9 @@ error: Please commit or stash them.
  1 file changed, 4 insertions(+)
 error: cannot pull with rebase: You have unstaged changes.
 error: Please commit or stash them.
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
