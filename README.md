@@ -1,141 +1,166 @@
-# 🚀 Sync Project – Mobile DevOps Automation System
-
-## 👤 Owner
-**Sukrullah**
-
-## 🔗 Repository
-git@github.com:Msukrullah1/sync_project.git  
-https://github.com/Msukrullah1/sync_project.git
+# 🚀 SUKRULLAH PRO SYNC v4.3
+> Mobile DevOps Automation System — Android (Termux)
 
 ---
 
-# 📌 Project Overview
+## 📌 Overview
 
-This project converts an Android device (Termux) into a mini DevOps automation server.
+Yeh system ek Android device (Termux) ko automated sync server mein convert karta hai jo:
 
-It automatically:
-
-- Pulls latest changes
-- Commits local changes
-- Pushes to GitHub
-- Sends Telegram notifications
-- Creates daily ZIP backups
-- Maintains weekly backup branch
-- Runs scheduled tasks via Cron
-- Uses SSH for secure authentication
+- Zoho WorkDrive se files sync karta hai
+- GitHub pe code push karta hai
+- Telegram pe detailed report bhejta hai
+- Daily/Weekly backup karta hai
+- Cron se scheduled tasks chalata hai
 
 ---
 
-# 🛠 Technologies Used
+## 📂 File Structure
 
-- Termux (Linux environment on Android)
-- Git
-- GitHub
-- SSH (ed25519 authentication)
-- Cron (cronie)
-- Zip
+```
+sync_project/
+├── sync.sh              # Main controller
+├── dashboard.sh         # Termux display dashboard
+├── tg_report.sh         # Telegram report sender
+├── storage_info.sh      # Storage detection (alag file)
+├── auto_push.sh         # Auto git push har 30 min
+├── daily_zip_backup.sh  # Daily ZIP backup
+├── weekly_backup.sh     # Weekly backup branch
+├── notify.sh            # Notification helper
+├── .env                 # Tokens (git ignored)
+└── .gitignore
+```
+
+---
+
+## ⚙️ Sync Configuration
+
+| Name | Local Path | Remote |
+|------|-----------|--------|
+| Cloud-Sync-File | `~/storage/shared/Cloud-Sync-File` | `zoho:Cloud-Sync-File` |
+| HiRes_Songs | `/storage/emulated/0/HiRes_Songs` | `zoho:HIRES_SONGS` |
+
+---
+
+## 🕐 Cron Schedule
+
+| Time | Task |
+|------|------|
+| 02:00, 11:00, 17:00, 21:00 | Auto Sync |
+| Every 30 min | Auto Git Push |
+| Daily 3:00 AM | ZIP Backup |
+| Sunday 4:00 AM | Weekly Backup Branch |
+
+---
+
+## 🔧 Run Commands
+
+```bash
+bash ~/sync_project/sync.sh           # Auto mode
+bash ~/sync_project/sync.sh manual    # Manual (no WiFi check)
+bash ~/sync_project/sync.sh preview   # Dashboard only
+bash ~/sync_project/sync.sh force     # Mobile data pe bhi sync
+bash ~/sync_project/sync.sh watch     # WiFi watcher mode
+```
+
+---
+
+## 📊 Dashboard Features
+
+- Battery % — colored progress bar (Red → Yellow → Orange → Green)
+- Network, Mode display
+- Internal Storage, MicroSD (auto detect), Zoho, OneDrive
+- Cron schedule
+
+---
+
+## 📩 Telegram Report Features
+
+- Battery bar with color indicator
+- All storage in GB (e.g. 72.0GB / 107.0GB)
+- Progress bars for all drives
+- Upload & Delete count
+- Timestamp
+
+---
+
+## 📁 .env File
+
+```bash
+TG_TOKEN=your_telegram_bot_token
+TG_CHAT_ID=your_chat_id
+ZOHO_TOTAL=55
+```
+
+---
+
+## 🔐 Security
+
+- SSH key authentication (ed25519)
+- `.env` git ignored
+- Telegram token sirf local stored
+- Cron logs git ignored
+
+---
+
+## 🛠 Technologies
+
+- Termux (Linux on Android)
+- Bash scripting
+- Git & GitHub
+- rclone (Zoho + OneDrive)
 - Telegram Bot API
+- Cron scheduler
+- SSH (ed25519)
 
 ---
 
-# 📂 Project Structure
-sync_project/ │ ├── auto_push.sh ├── weekly_backup.sh ├── daily_zip_backup.sh ├── setup_cron.sh ├── README.md ├── .gitignore └── other .sh files
----
+## 📱 New Device Setup
 
-# ⚙ Automation System
-
-## 🔄 Auto Sync (Every 30 Minutes)
-
-Cron Entry:*/30 * * * * /data/data/com.termux/files/home/sync_project/auto_push.sh
-Process:
-1. Pull latest changes
-2. Add local changes
-3. Commit
-4. Push
-5. Send Telegram notification
-
----
-
-## 📦 Daily ZIP Backup (3 AM)
-
-Creates:sync_backups/backup_YYYY-MM-DD.zip
-Excludes:
-- .git folder
-- log files
-
----
-
-## 🔁 Weekly Backup Branch (Sunday 4 AM)
-
-Branch:
-backup-main
-Merges `main` into `backup-main`.
-
-Used as disaster recovery layer.
-
----
-
-# 🔐 Security Model
-
-- SSH authentication enabled
-- No password login
-- Telegram token stored locally
-- Logs ignored via .gitignore
-- Cron logs not committed
-
----
-
-# 📱 Multi-Device Setup Guide
-
-To add a new device:
-
-### 1️⃣ Install Git & SSH
-
-### 2️⃣ Generate SSH Key
-
+```bash
+# 1. SSH key banao
 ssh-keygen -t ed25519
-### 3️⃣ Add Public Key to GitHub
 
-### 4️⃣ Clone Repository
+# 2. Public key GitHub pe add karo
 
+# 3. Repo clone karo
 git clone git@github.com:Msukrullah1/sync_project.git
-### 5️⃣ Setup Cron
-crontab -e
----
 
-# 🚨 Troubleshooting
+# 4. .env file banao
+nano ~/sync_project/.env
 
-## Git Conflict
-git pull
-Resolve manually.
+# 5. rclone configure karo
+rclone config
 
-## Cron Not Running
-ps aux | grep crond crontab -l
-## Telegram Not Working
-Check:
-- BOT_TOKEN
-- CHAT_ID
-- Internet connection
+# 6. Run karo
+bash ~/sync_project/sync.sh
+```
 
 ---
 
-# 🎯 System Status
+## 🚨 Troubleshooting
 
-✔ SSH Secured  
-✔ Auto Commit  
-✔ Auto Push  
-✔ Telegram Alerts  
-✔ Daily Backup  
-✔ Weekly Backup  
-✔ Multi-Device Ready  
+| Problem | Solution |
+|---------|----------|
+| Storage N/A | `sync.sh preview` se chalao, directly nahi |
+| MicroSD not detected | SD card check karo, auto detect hoga |
+| Telegram fail | `.env` mein TG_TOKEN check karo |
+| Git conflict | `git fetch origin && git reset --hard origin/main` |
+| Cron not running | `ps aux \| grep crond` |
 
 ---
 
-# 🧠 Summary
+## ✅ Features Status
 
-This system transforms a mobile device into a secure, automated Git synchronization and backup server.
-
-Minimal manual work.  
-Fully automated.  
-Secure and scalable.
-
+| Feature | Status |
+|---------|--------|
+| Auto Sync (Zoho) | ✅ |
+| Auto Git Push | ✅ |
+| Telegram Reports | ✅ |
+| Daily ZIP Backup | ✅ |
+| Weekly Backup | ✅ |
+| Termux Dashboard | ✅ |
+| MicroSD Detection | ✅ |
+| Battery Bar Colors | ✅ |
+| Storage in GB | ✅ |
+| OneDrive Display | ✅ |
