@@ -143,6 +143,7 @@ run_sync(){
 }
 
 log_msg "START Mode:${MODE} WiFi:${CURRENT_WIFI:-Mobile} Bat:${BAT}%"
+SYNC_START=$(date +%s)
 
 run_sync "Cloud-Sync-File" "$LOCAL1" "$REMOTE1"
 run_sync "HiRes_Songs"     "$LOCAL2" "$REMOTE2"
@@ -162,7 +163,8 @@ dbot
 echo ""
 
 # ───── Telegram report ─────
-export TOTAL_UPLOADED TOTAL_DELETED
+SYNC_DURATION=$(( $(date +%s) - SYNC_START ))
+export TOTAL_UPLOADED TOTAL_DELETED SYNC_DURATION
 bash "$HOME/sync_project/tg_report.sh"
 
 log_msg "END ⬆${TOTAL_UPLOADED} 🗑${TOTAL_DELETED}"
