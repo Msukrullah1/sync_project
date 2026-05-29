@@ -12,9 +12,13 @@ SD_USED=$(echo "$SD_RAW"  | awk '{print $3}')
 SD_FREE=$(echo "$SD_RAW"  | awk '{print $4}')
 SD_PCT=$(echo "$SD_RAW"   | awk '{print $5}' | tr -d '%')
 SD_PCT=${SD_PCT:-0}
-ZOHO_RAW=$(rclone about "${ZOHO_REMOTE:-zoho:}" 2>/dev/null)
-ZOHO_USED=$(echo "$ZOHO_RAW" | grep -i '^Used' | awk '{print $2}')
-ZOHO_USED=${ZOHO_USED%.*}; ZOHO_USED=${ZOHO_USED:-0}
+ZOHO_RAW=$(rclone about "${ZOHO_REMOTE:-zoho:}" --timeout 30s 2>/dev/null)
+if [ -n "$ZOHO_RAW" ]; then
+  ZOHO_USED=$(echo "$ZOHO_RAW" | grep -i '^Used' | awk '{print $2}')
+  ZOHO_USED=${ZOHO_USED%.*}
+fi
+ZOHO_USED=${ZOHO_USED:-0}
+[[ "$ZOHO_USED" =~ ^[0-9]+$ ]] || ZOHO_USED=0
 ZOHO_TOTAL_GB=${ZOHO_TOTAL_GB:-55}
 ZOHO_FREE=$(( ZOHO_TOTAL_GB - ZOHO_USED ))
 [ "$ZOHO_FREE" -lt 0 ] && ZOHO_FREE=0

@@ -100,7 +100,7 @@ ${ZH_BAR}
 Y='\033[1;33m'; N='\033[0m'; SB='\033[38;5;39m'
 echo -e "${SB}📡 Sending Telegram report...${N}"
 
-resp=$(curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+resp=$(curl -s --max-time 30 -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
           -F "chat_id=${TG_CHAT_ID}" \
           -F "parse_mode=HTML" \
           -F "text=${REPORT}")

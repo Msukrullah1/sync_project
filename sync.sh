@@ -69,19 +69,31 @@ if [ "$ZOHO_PCT" -ge "$ZOHO_LIMIT_PCT" ]; then
   exit 0
 fi
 
+# ───── Log rotation ─────
+rotate_log(){
+  local f="$1" max="${2:-500}"
+  [ -f "$f" ] || return
+  local lines; lines=$(wc -l < "$f")
+  if [ "$lines" -gt "$max" ]; then
+    tail -n "$max" "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+  fi
+}
+rotate_log "$MASTER_LOG" 500
+rotate_log "$LOG_DIR/cron.log" 500
+find "$LOG_DIR" -name "sync_*.log" -mtime +7 -delete 2>/dev/null
+
 # ───── Cron setup ─────
 setup_cron(){
-  local n; n=$(crontab -l 2>/dev/null | grep -F "sync.sh auto" | wc -l)
-  if [ "${n:-0}" -lt 4 ]; then
-    (
-      crontab -l 2>/dev/null | grep -v "sync.sh" || true
-      echo "0 2  * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-      echo "0 11 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-      echo "0 17 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-      echo "0 21 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-    ) | crontab -
-    log_msg "Crontab auto-configured"
-  fi
+  local existing; existing=$(crontab -l 2>/dev/null | grep -cF "sync.sh auto" || echo 0)
+  [ "${existing}" -eq 4 ] && return
+  (
+    crontab -l 2>/dev/null | grep -v "sync.sh" || true
+    echo "0 2  * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+    echo "0 11 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+    echo "0 17 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+    echo "0 21 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+  ) | crontab -
+  log_msg "Crontab auto-configured"
 }
 setup_cron
 
@@ -112,6 +124,8 @@ run_sync(){
     --delete-during \
     --log-file="$LOG" \
     --log-level INFO \
+    --timeout 60s \
+    --contimeout 30s \
     --progress 2>&1 | while IFS= read -r l; do
       echo -e "  ${D}${l}${N}"
     done
