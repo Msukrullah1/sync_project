@@ -211,15 +211,6 @@ else
 fi
 dempty
 
-# ── OneDrive ──
-row "  ${C}${B}🔵 OneDrive ${Y}[Display Only]${N}"
-if [ "${OD_INFO_ON:-1}" -eq 1 ] && [ -n "${OD_TOTAL:-}" ]; then
-  row "  ${B}$(fmt_gb "${OD_USED_G:-N/A}")${N} / $(fmt_gb "${OD_TOTAL:-N/A}")   Free: ${LIME}${B}$(fmt_gb "${OD_FREE_G:-N/A}")${N}"
-  row "  $(fpbar "${OD_PCT:-0}")"
-else
-  row "  ${D}Cannot reach OneDrive${N}"
-fi
-
 # ───── SCHEDULE ─────
 dmid
 row "  ${GD}${B}🕐 SCHEDULE${N}"

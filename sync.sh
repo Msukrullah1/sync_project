@@ -16,16 +16,12 @@ LOCAL1="$HOME/storage/shared/Cloud-Sync-File"
 REMOTE1="zoho:Cloud-Sync-File"
 LOCAL2="/storage/emulated/0/HiRes_Songs"
 REMOTE2="zoho:HIRES_SONGS"
-OD_INFO_ON=1
 MODE="auto"
 [ -n "$1" ] && MODE="$1"
-for arg in "$@"; do
-  case "$arg" in --no-od) OD_INFO_ON=0 ;; esac
-done
 
 export ALLOWED_WIFI1 ALLOWED_WIFI2 ZOHO_REMOTE ZOHO_TOTAL_GB
 export ZOHO_SYNC ZOHO_LIMIT_PCT LOCAL1 REMOTE1 LOCAL2 REMOTE2
-export OD_INFO_ON MODE
+export MODE
 
 # ───── Paths ─────
 LOG_DIR="$HOME/sync_logs"
@@ -52,7 +48,6 @@ CURRENT_WIFI=$(termux-wifi-connectioninfo 2>/dev/null | grep '"ssid"' | tail -1 
 [ "$CURRENT_WIFI" = "<unknown ssid>" ] && CURRENT_WIFI=""
 
 source "$HOME/sync_project/storage_info.sh"
-export OD_TOTAL OD_USED_G OD_FREE_G OD_PCT
 
 # ───── Show dashboard ─────
 bash "$HOME/sync_project/dashboard.sh"

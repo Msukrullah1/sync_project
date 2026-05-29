@@ -57,7 +57,6 @@ BAT_BAR=$(bat_ebar "${BAT:-0}")
 INT_BAR=$(storage_ebar "${INT_PCT:-0}")
 SD_BAR=$(storage_ebar "${SD_PCT:-0}")
 ZH_BAR=$(storage_ebar "${ZOHO_PCT:-0}")
-OD_BAR=$(storage_ebar "${OD_PCT:-0}")
 
 # ───── MicroSD section ─────
 _sd_num="${SD_TOTAL:-}"
@@ -91,10 +90,6 @@ ${SD_SECTION}
 Zoho WorkDrive
 $(fmt_gb "${ZOHO_USED:-0}") / $(fmt_gb "${ZOHO_TOTAL_GB:-55}")  •  Free: $(fmt_gb "${ZOHO_FREE:-0}")
 ${ZH_BAR}
-
-OneDrive  (Display Only)
-$(fmt_gb "${OD_USED_G:-N/A}") / $(fmt_gb "${OD_TOTAL:-N/A}")  •  Free: $(fmt_gb "${OD_FREE_G:-N/A}")
-${OD_BAR}
 
 📁 <b>SYNC RESULTS</b>
 ⬆ Uploaded : <b>${TOTAL_UPLOADED:-0}</b> files
