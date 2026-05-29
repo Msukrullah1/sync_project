@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ########################################
-# SUKRULLAH TELEGRAM REPORT v5.0
+# SUKRULLAH TELEGRAM REPORT v5.1
 ########################################
 source "$HOME/sync_project/.env"
 
@@ -8,32 +8,28 @@ TG_TOKEN="${TG_TOKEN:-}"
 TG_CHAT_ID="${TG_CHAT_ID:-}"
 [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT_ID" ] && exit 0
 
-# ── Monospace block bar (20 wide) ──
-make_bar(){
-  local v=$1 w=20
+# ── Emoji battery bar (10 wide, color by level) ──
+bat_bar(){
+  local v=$1 w=10
   [ "$v" -lt 0 ] && v=0; [ "$v" -gt 100 ] && v=100
   local f=$(( v * w / 100 ))
   [ "$f" -eq 0 ] && [ "$v" -gt 0 ] && f=1
-  local bar="" i
-  for((i=1;i<=w;i++)); do
-    [ $i -le $f ] && bar+="█" || bar+="░"
-  done
-  printf "%s %3d%%" "$bar" "$v"
+  local em bar="" i
+  [ "$v" -le 20 ] && em="🟥" || { [ "$v" -le 50 ] && em="🟨" || em="🟩"; }
+  for((i=1;i<=w;i++)); do [ $i -le $f ] && bar+="$em" || bar+="⬜"; done
+  printf "%s  %d%%" "$bar" "$v"
 }
 
-# ── Color dot by fill percentage ──
-status_dot(){
-  local v=$1
-  [ "$v" -ge 90 ] && echo "🔴" && return
-  [ "$v" -ge 75 ] && echo "🟡" && return
-  echo "🟢"
-}
-
-# ── Battery icon ──
-bat_icon(){
-  local p=$1 s="${2:-}"
-  case "$s" in CHARGING|Charging|charging|FULL|Full) echo "🔌"; return;; esac
-  [ "$p" -le 15 ] && echo "🪫" || echo "🔋"
+# ── Emoji storage bar (10 wide, color by fill level) ──
+storage_bar(){
+  local v=$1 w=10
+  [ "$v" -lt 0 ] && v=0; [ "$v" -gt 100 ] && v=100
+  local f=$(( v * w / 100 ))
+  [ "$f" -eq 0 ] && [ "$v" -gt 0 ] && f=1
+  local em bar="" i
+  [ "$v" -ge 80 ] && em="🟥" || { [ "$v" -ge 60 ] && em="🟨" || em="🟩"; }
+  for((i=1;i<=w;i++)); do [ $i -le $f ] && bar+="$em" || bar+="⬜"; done
+  printf "%s  %d%%" "$bar" "$v"
 }
 
 # ── Duration formatter ──
@@ -57,33 +53,34 @@ esc(){ printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
 
 SEP="━━━━━━━━━━━━━━━━━━━━━━━━━━"
 NET=$([ -n "${CURRENT_WIFI:-}" ] && esc "${CURRENT_WIFI}" || echo "Mobile Data")
-BAT_ICO=$(bat_icon "${BAT:-0}" "${BAT_STATUS:-Unknown}")
 DUR=$(fmt_dur "${SYNC_DURATION:-0}")
 MODE_UP=$(echo "${MODE:-auto}" | tr '[:lower:]' '[:upper:]')
 
-# ── Progress bars ──
-BAT_BAR=$(make_bar "${BAT:-0}")
-INT_BAR=$(make_bar "${INT_PCT:-0}")
-SD_BAR=$(make_bar  "${SD_PCT:-0}")
-ZH_BAR=$(make_bar  "${ZOHO_PCT:-0}")
+# ── Battery icon ──
+case "${BAT_STATUS:-Unknown}" in
+  CHARGING|Charging|charging|FULL|Full) BAT_ICO="🔌" ;;
+  *) [ "${BAT:-0}" -le 15 ] && BAT_ICO="🪫" || BAT_ICO="🔋" ;;
+esac
+BAT_BAR=$(bat_bar "${BAT:-0}")
 
-# ── Status dots ──
-INT_DOT=$(status_dot "${INT_PCT:-0}")
-ZH_DOT=$(status_dot  "${ZOHO_PCT:-0}")
+# ── Storage bars ──
+INT_BAR=$(storage_bar "${INT_PCT:-0}")
+SD_BAR=$(storage_bar  "${SD_PCT:-0}")
+ZH_BAR=$(storage_bar  "${ZOHO_PCT:-0}")
 
 # ── MicroSD section ──
 _sd_num="${SD_TOTAL:-}"; _sd_num="${_sd_num%G}"
 if [ -n "${SD_TOTAL:-}" ] && [ "${_sd_num:-0}" != "0" ] && [ -n "${_sd_num:-}" ]; then
-  SD_DOT=$(status_dot "${SD_PCT:-0}")
-  SD_SECTION="${SD_DOT} <b>MicroSD Card</b>
+  SD_SECTION="
+💳 <b>MicroSD Card</b>
    $(fmt_gb "${SD_USED:-0}") / $(fmt_gb "${SD_TOTAL:-0}")  •  Free: <b>$(fmt_gb "${SD_FREE:-0}")</b>
-<code>   ${SD_BAR}</code>"
+${SD_BAR}"
 else
-  SD_SECTION="💳 <b>MicroSD Card</b>
-   <i>Not Detected</i>"
+  SD_SECTION="
+💳 <b>MicroSD</b>  ·  <i>Not Detected</i>"
 fi
 
-# ── Zoho alert ──
+# ── Zoho storage alert ──
 ZH_ALERT=""
 [ "${ZOHO_PCT:-0}" -ge 90 ] && ZH_ALERT="
 🚨 <b>CRITICAL — Zoho almost full!</b>"
@@ -107,7 +104,7 @@ REPORT="🚀 <b>SUKRULLAH PRO SYNC</b>  <code>v4.3</code>
 <b>   ⚡ SYSTEM STATUS</b>
 <b>${SEP}</b>
 ${BAT_ICO} <b>Battery</b>    <b>${BAT:-0}%</b>  <i>(${BAT_STATUS:-Unknown})</i>
-<code>   ${BAT_BAR}</code>
+${BAT_BAR}
 
 📶 <b>Network</b>    <b>${NET}</b>
 ⚙️ <b>Mode</b>       <b>${MODE_UP}</b>
@@ -115,15 +112,14 @@ ${BAT_ICO} <b>Battery</b>    <b>${BAT:-0}%</b>  <i>(${BAT_STATUS:-Unknown})</i>
 <b>${SEP}</b>
 <b>   💾 STORAGE</b>
 <b>${SEP}</b>
-${INT_DOT} <b>Internal Storage</b>
+📱 <b>Internal Storage</b>
    $(fmt_gb "${INT_USED:-0}") / $(fmt_gb "${INT_TOTAL:-0}")  •  Free: <b>$(fmt_gb "${INT_FREE:-0}")</b>
-<code>   ${INT_BAR}</code>
-
+${INT_BAR}
 ${SD_SECTION}
 
-${ZH_DOT} <b>Zoho WorkDrive</b>
+☁️ <b>Zoho WorkDrive</b>
    $(fmt_gb "${ZOHO_USED:-0}") / $(fmt_gb "${ZOHO_TOTAL_GB:-55}")  •  Free: <b>$(fmt_gb "${ZOHO_FREE:-0}")</b>
-<code>   ${ZH_BAR}</code>${ZH_ALERT}
+${ZH_BAR}${ZH_ALERT}
 
 <b>${SEP}</b>
 <b>   📁 SYNC RESULTS</b>
