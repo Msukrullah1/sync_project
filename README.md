@@ -69,7 +69,7 @@ bash ~/sync_project/sync.sh watch     # WiFi watcher mode
 
 - Battery % — colored progress bar (Red → Yellow → Orange → Green)
 - Network, Mode display
-- Internal Storage, MicroSD (auto detect), Zoho, OneDrive
+- Internal Storage, MicroSD (auto detect), Zoho WorkDrive
 - Cron schedule
 
 ---
@@ -108,7 +108,7 @@ ZOHO_TOTAL=55
 - Termux (Linux on Android)
 - Bash scripting
 - Git & GitHub
-- rclone (Zoho + OneDrive)
+- rclone (Zoho WorkDrive)
 - Telegram Bot API
 - Cron scheduler
 - SSH (ed25519)
@@ -163,4 +163,3 @@ bash ~/sync_project/sync.sh
 | MicroSD Detection | ✅ |
 | Battery Bar Colors | ✅ |
 | Storage in GB | ✅ |
-| OneDrive Display | ✅ |

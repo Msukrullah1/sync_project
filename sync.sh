@@ -16,16 +16,12 @@ LOCAL1="$HOME/storage/shared/Cloud-Sync-File"
 REMOTE1="zoho:Cloud-Sync-File"
 LOCAL2="/storage/emulated/0/HiRes_Songs"
 REMOTE2="zoho:HIRES_SONGS"
-OD_INFO_ON=1
 MODE="auto"
 [ -n "$1" ] && MODE="$1"
-for arg in "$@"; do
-  case "$arg" in --no-od) OD_INFO_ON=0 ;; esac
-done
 
 export ALLOWED_WIFI1 ALLOWED_WIFI2 ZOHO_REMOTE ZOHO_TOTAL_GB
 export ZOHO_SYNC ZOHO_LIMIT_PCT LOCAL1 REMOTE1 LOCAL2 REMOTE2
-export OD_INFO_ON MODE
+export MODE
 
 # ───── Paths ─────
 LOG_DIR="$HOME/sync_logs"
@@ -52,7 +48,6 @@ CURRENT_WIFI=$(termux-wifi-connectioninfo 2>/dev/null | grep '"ssid"' | tail -1 
 [ "$CURRENT_WIFI" = "<unknown ssid>" ] && CURRENT_WIFI=""
 
 source "$HOME/sync_project/storage_info.sh"
-export OD_TOTAL OD_USED_G OD_FREE_G OD_PCT
 
 # ───── Show dashboard ─────
 bash "$HOME/sync_project/dashboard.sh"
@@ -74,19 +69,31 @@ if [ "$ZOHO_PCT" -ge "$ZOHO_LIMIT_PCT" ]; then
   exit 0
 fi
 
+# ───── Log rotation ─────
+rotate_log(){
+  local f="$1" max="${2:-500}"
+  [ -f "$f" ] || return
+  local lines; lines=$(wc -l < "$f")
+  if [ "$lines" -gt "$max" ]; then
+    tail -n "$max" "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+  fi
+}
+rotate_log "$MASTER_LOG" 500
+rotate_log "$LOG_DIR/cron.log" 500
+find "$LOG_DIR" -name "sync_*.log" -mtime +7 -delete 2>/dev/null
+
 # ───── Cron setup ─────
 setup_cron(){
-  local n; n=$(crontab -l 2>/dev/null | grep -F "sync.sh auto" | wc -l)
-  if [ "${n:-0}" -lt 4 ]; then
-    (
-      crontab -l 2>/dev/null | grep -v "sync.sh" || true
-      echo "0 2  * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-      echo "0 11 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-      echo "0 17 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-      echo "0 21 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
-    ) | crontab -
-    log_msg "Crontab auto-configured"
-  fi
+  local existing; existing=$(crontab -l 2>/dev/null | grep -cF "sync.sh auto" || echo 0)
+  [ "${existing}" -eq 4 ] && return
+  (
+    crontab -l 2>/dev/null | grep -v "sync.sh" || true
+    echo "0 2  * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+    echo "0 11 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+    echo "0 17 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+    echo "0 21 * * * bash $HOME/sync_project/sync.sh auto >> $LOG_DIR/cron.log 2>&1"
+  ) | crontab -
+  log_msg "Crontab auto-configured"
 }
 setup_cron
 
@@ -117,6 +124,8 @@ run_sync(){
     --delete-during \
     --log-file="$LOG" \
     --log-level INFO \
+    --timeout 60s \
+    --contimeout 30s \
     --progress 2>&1 | while IFS= read -r l; do
       echo -e "  ${D}${l}${N}"
     done
@@ -134,6 +143,7 @@ run_sync(){
 }
 
 log_msg "START Mode:${MODE} WiFi:${CURRENT_WIFI:-Mobile} Bat:${BAT}%"
+SYNC_START=$(date +%s)
 
 run_sync "Cloud-Sync-File" "$LOCAL1" "$REMOTE1"
 run_sync "HiRes_Songs"     "$LOCAL2" "$REMOTE2"
@@ -153,7 +163,8 @@ dbot
 echo ""
 
 # ───── Telegram report ─────
-export TOTAL_UPLOADED TOTAL_DELETED
+SYNC_DURATION=$(( $(date +%s) - SYNC_START ))
+export TOTAL_UPLOADED TOTAL_DELETED SYNC_DURATION
 bash "$HOME/sync_project/tg_report.sh"
 
 log_msg "END ⬆${TOTAL_UPLOADED} 🗑${TOTAL_DELETED}"
